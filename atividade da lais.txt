@@ -1,0 +1,283 @@
+SELECT * FROM DEBITOS d 
+
+UPDATE DEBITOS D
+SET D.SITUACAO_DEBITO = 'ATRASADO'
+WHERE D.DATAVENCIMENTO < CURRENT_DATE
+  AND D.SITUACAO_DEBITO NOT IN ('NEGOCIADO', 'PAGO');
+
+ 
+UPDATE DEBITOS D
+SET D.SITUACAO_DEBITO = 'PENDENTE'
+WHERE D.DATAVENCIMENTO >= CURRENT_DATE
+  AND D.SITUACAO_DEBITO != 'PAGO';
+
+
+UPDATE DEBITOS D
+SET D.DATAVENCIMENTO = DATEADD(YEAR, -5, D.DATAVENCIMENTO)
+WHERE D.SITUACAO_DEBITO = 'NEGOCIADO';
+
+
+SELECT P.NOME, P.EMAIL, P.TELEFONE
+FROM PESSOA P;
+
+
+SELECT P.NOME, P.PRECO_UNITARIO
+FROM PRODUTO P
+WHERE P.PRECO_UNITARIO > 100;
+
+
+SELECT V.ID_VENDA, V.VALOR_TOTAL, V.DATA_VENDA
+FROM VENDA V
+WHERE V.DATA_VENDA = '2023-09-13';
+
+
+SELECT P.NOME, P.DATA_NASCIMENTO, 
+       EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM P.DATA_NASCIMENTO) AS IDADE
+FROM FORNECEDOR F
+JOIN PESSOA P ON F.ID_PESSOA = P.ID_PESSOA
+INNER JOIN PRODUTO PR ON PR.ID_FORNECEDOR = F.ID_FORNECEDOR
+WHERE PR.ID_PRODUTO IS NULL;
+
+--8. Liste os clientes que já realizaram compras com débitos vencidos.
+
+SELECT P.NOME
+FROM CLIENTE C
+JOIN PESSOA P ON C.ID_PESSOA = P.ID_PESSOA
+JOIN DEBITOS D ON C.ID_CLIENTE = D.ID_CLIENTE
+WHERE D.DATAVENCIMENTO < CURRENT_DATE
+  AND D.SITUACAO_DEBITO <> 'PAGO';
+
+ 
+--10. Selecione os 10 maiores devedores trazendo código, nome, idade e a soma total dos débitos vencidos e a soma total dos débitos pagos.
+
+SELECT FIRST 10 c.ID_CLIENTE 
+     , p.NOME
+     , EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM p.DATA_NASCIMENTO) AS IDADE
+     , COALESCE( (SELECT SUM(d.VALOR_TOTAL)
+             FROM DEBITOS d 
+            WHERE d.ID_CLIENTE = c.ID_CLIENTE 
+              AND d.DATAVENCIMENTO < CURRENT_DATE 
+              AND D.SITUACAO_DEBITO IN ('Atrasado', 'Pendente')),0) AS debito_pendente
+	 , (SELECT SUM(d.VALOR_TOTAL)
+          FROM DEBITOS d 
+         WHERE d.ID_CLIENTE = c.ID_CLIENTE      
+           AND D.SITUACAO_DEBITO = 'Pago') AS debito_pago           
+FROM PESSOA p 
+INNER JOIN CLIENTE c ON C.ID_PESSOA  = P.ID_PESSOA 
+ORDER BY 4 DESC 
+
+--11. Atualize o preço unitário de todos os produtos com estoque inferior a 10 unidades para mais 10%.
+
+UPDATE PRODUTO p
+SET p.PRECO_UNITARIO = p.PRECO_UNITARIO * 1.10
+WHERE p.QUANTIDADE_ESTOQUE < 10;
+
+--12. Modifique o status de entrega para 'Concluído' em todas as entregas realizadas antes de '2024-01-01'.
+
+UPDATE *
+SET STATUS_ENTREGA = 'CONCLUIDO'
+WHERE DATA_ENTREGA < '2024-01-01';
+
+--13. Altere todos os débitos que estão com situação = 'Atrasado' para 'Pagos' se o mesmo ter o registro na tabela de pagamento.
+
+UPDATE DEBITOS D
+SET D.SITUACAO_DEBITO = 'Pago'
+WHERE D.SITUACAO_DEBITO = 'Atrasado'
+  AND EXISTS (SELECT 1 
+              FROM PAGAMENTO P 
+              WHERE P.ID_DEBITO = D.ID_DEBITO);
+
+--15. Selecione as vendas entre o mês de dezembro de 2023 até janeiro de 2024.
+
+SELECT V.ID_VENDA, V.DATA_VENDA, V.VALOR_TOTAL
+FROM VENDA V
+WHERE V.DATA_VENDA BETWEEN '2023-12-01' AND '2024-01-31';
+
+SELECT P.NOME, P.QUANTIDADE_ESTOQUE
+FROM PRODUTO P
+WHERE P.QUANTIDADE_ESTOQUE BETWEEN 5 AND 20;
+
+--16. Liste os produtos com estoque entre 5 e 20 unidades.
+
+SELECT P.NOME, P.QUANTIDADE_ESTOQUE
+FROM PRODUTO P
+WHERE P.QUANTIDADE_ESTOQUE BETWEEN 5 AND 20;
+
+--17. Retorne todas as pessoas com nomes que começam com 'A'.
+
+SELECT P.NOME, P.EMAIL, P.TELEFONE
+FROM PESSOA P
+WHERE P.NOME LIKE 'A%';
+
+--18. Selecione os produtos que não foram vendidos.
+
+SELECT P.NOME
+FROM PRODUTO P
+LEFT JOIN ITENSVENDA IV ON P.ID_PRODUTO = IV.ID_PRODUTO
+WHERE IV.ID_PRODUTO IS NULL;
+
+--19. Liste os produtos vendidos para os clientes 'Carla Souza', 'Larissa Ferreira'.
+
+SELECT P.NOME AS NOME_PRODUTO, IV.QUANTIDADE
+FROM PRODUTO P
+JOIN ITENSVENDA IV ON P.ID_PRODUTO = IV.ID_PRODUTO
+JOIN VENDA V ON IV.ID_VENDA = V.ID_VENDA
+WHERE V.ID_PESSOA IN (3, 11);  
+
+--20. Mostre as pessoas que são clientes OU fornecedores.
+
+SELECT P.NOME
+FROM PESSOA P
+WHERE P.ID_PESSOA IN (SELECT C.ID_PESSOA FROM CLIENTE C)
+   OR P.ID_PESSOA IN (SELECT F.ID_PESSOA FROM FORNECEDOR F);
+  
+--21. Retorne todas as informações da venda com detalhes do cliente e forma de pagamento.
+  
+  SELECT V.*, C.*, FP.DESCRICAO AS FORMA_PAGAMENTO
+FROM VENDA V
+JOIN CLIENTE C ON V.ID_PESSOA = C.ID_PESSOA
+JOIN FORMA_PAGAMENTO FP ON V.ID_FORMA_PAGAMENTO = FP.ID_FORMA_PAGAMENTO;
+
+--22. Mostre todas as compras de um determinado produto ('Placa de Captura'), incluindo detalhes do produto.
+
+SELECT V.*, IV.*, P.*
+FROM VENDA V
+JOIN ITENSVENDA IV ON V.ID_VENDA = IV.ID_VENDA
+JOIN PRODUTO P ON IV.ID_PRODUTO = P.ID_PRODUTO
+WHERE P.NOME = 'Placa de Captura';
+
+--23. Combine os nomes dos fornecedores com os nomes dos clientes e suas respectivas idades que irão fazer no ano de 2025.
+
+--24. Retorne todos os logradouros e bairros, indicando se pertencem ou não a uma pessoa.
+
+SELECT L.NOME AS NOME_LOGRADOURO, 
+       B.NOME AS NOME_BAIRRO, 
+       'PERTENCE A UMA PESSOA' AS STATUS
+FROM LOGRADOURO L
+JOIN BAIRRO B ON L.ID_BAIRRO = B.ID_BAIRRO
+JOIN ENDERECO E ON L.ID_LOGRADOURO = E.ID_LOGRADOURO
+WHERE E.ID_PESSOA IS NOT NULL
+
+UNION ALL
+
+SELECT L.NOME AS NOME_LOGRADOURO, 
+       B.NOME AS NOME_BAIRRO, 
+       'NÃO PERTENCE A NENHUMA PESSOA' AS STATUS
+FROM LOGRADOURO L
+JOIN BAIRRO B ON L.ID_BAIRRO = B.ID_BAIRRO
+LEFT JOIN ENDERECO E ON L.ID_LOGRADOURO = E.ID_LOGRADOURO
+WHERE E.ID_PESSOA IS NULL;
+
+--25. Selecione os produtos que têm preço unitário superior à média.
+
+SELECT P.*
+FROM PRODUTO P
+WHERE P.PRECO_UNITARIO > (SELECT AVG(P2.PRECO_UNITARIO) FROM PRODUTO P2);
+
+--26. Liste os clientes que fizeram compras em cidades com mais de 1 milhão de habitantes.
+
+SELECT DISTINCT C.* p.PESSOA
+FROM CLIENTE C
+JOIN VENDA V ON C.ID_PESSOA = V.ID_PESSOA
+JOIN ENDERECO E ON E.ID_PESSOA = C.ID_PESSOA
+JOIN MUNICIPIO M ON E.ID_MUNICIPIO = M.ID_MUNICIPIO
+WHERE M.POPULACAO > 1000000;
+
+--27. Mostre a quantidade total de produtos vendidos por fornecedor.
+
+SELECT F.ID_FORNECEDOR, 
+       P.NOME AS NOME_FORNECEDOR, 
+       SUM(IV.QUANTIDADE) AS TOTAL_PRODUTOS_VENDIDOS
+FROM FORNECEDOR F
+JOIN PRODUTO P ON F.ID_FORNECEDOR = P.ID_FORNECEDOR
+JOIN ITENSVENDA IV ON P.ID_PRODUTO = IV.ID_PRODUTO
+GROUP BY F.ID_FORNECEDOR, P.NOME;
+
+--28. Liste os clientes que realizaram compras com valor total superior a R$ 500.
+
+SELECT C.ID_CLIENTE, 
+       PE.NOME AS NOME_CLIENTE
+FROM CLIENTE C
+JOIN HISTORICO_COMPRAS_CLIENTE HCC ON C.ID_CLIENTE = HCC.ID_CLIENTE
+JOIN PESSOA PE ON C.ID_PESSOA = PE.ID_PESSOA
+WHERE HCC.VALOR_TOTAL > 500
+GROUP BY C.ID_CLIENTE, PE.NOME;
+
+--29. Retorne todas as pessoas com seus endereços de correspondência e residência, se tiverem.
+
+SELECT PE.ID_PESSOA, 
+       PE.NOME, 
+       E.NUMERO, 
+       E.COMPLEMENTO, 
+       E.TIPO_ENDERECO
+FROM PESSOA PE
+LEFT JOIN ENDERECO E ON PE.ID_PESSOA = E.ID_PESSOA;
+
+--30. Liste os produtos e seus preços, juntamente com o nome do fornecedor, mesmo que não tenham fornecedor.
+
+SELECT P.ID_PRODUTO, 
+       P.NOME AS NOME_PRODUTO, 
+       P.PRECO_UNITARIO, 
+       PE.NOME AS NOME_FORNECEDOR
+FROM PRODUTO P
+LEFT JOIN FORNECEDOR F ON P.ID_FORNECEDOR = F.ID_FORNECEDOR
+LEFT JOIN PESSOA PE ON F.ID_PESSOA = PE.ID_PESSOA;
+
+--31. Liste os produtos em ordem decrescente de quantidade em estoque.
+
+SELECT P.ID_PRODUTO, 
+       P.NOME AS NOME_PRODUTO, 
+       P.QUANTIDADE_ESTOQUE
+FROM PRODUTO P
+ORDER BY P.QUANTIDADE_ESTOQUE DESC;
+
+--32. Retorne as vendas em ordem crescente de valor total.
+
+SELECT V.ID_VENDA, 
+       V.VALOR_TOTAL
+FROM VENDA V
+ORDER BY V.VALOR_TOTAL ASC ;
+
+--33. Liste os produtos com quantidade em estoque menor que a média de todos os produtos.
+
+SELECT P.ID_PRODUTO, 
+       P.NOME AS NOME_PRODUTO, 
+       P.QUANTIDADE_ESTOQUE
+FROM PRODUTO P
+WHERE P.QUANTIDADE_ESTOQUE < (SELECT AVG(QUANTIDADE_ESTOQUE) FROM PRODUTO);
+
+--34. Selecione todas as pessoas cujo número de telefone seja igual ao de outra pessoa.
+
+SELECT PE1.ID_PESSOA, 
+       PE1.NOME AS NOME_PESSOA, 
+       PE1.TELEFONE
+FROM PESSOA PE1
+JOIN PESSOA PE2 ON PE1.TELEFONE = PE2.TELEFONE AND PE1.ID_PESSOA != PE2.ID_PESSOA;
+
+--35. Aumente em 10% o preço unitário de todos os produtos fornecidos por fornecedores de São Paulo.
+
+--36. Lista todas as vendas que estão com débito 'Negociado'.
+
+SELECT V.ID_VENDA, 
+       V.VALOR_TOTAL, 
+       D.SITUACAO_DEBITO
+FROM VENDA V
+JOIN DEBITOS D ON V.ID_VENDA = D.ID_VENDA
+WHERE D.SITUACAO_DEBITO = 'Negociado';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
